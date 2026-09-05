@@ -1,8 +1,9 @@
 # HelloWorld
 
-Dois brinquedos que rodam dentro do navegador — um **jogo da cobrinha em 3D**
-e um **afinador de violão** que escuta pelo microfone — mais um **mural de
-recados** e um **ranking** compartilhados entre quem visita.
+Brinquedos que rodam dentro do navegador — um **jogo da cobrinha em 3D**, uma
+**corrida de motocross** de rolagem lateral e um **afinador de violão** que
+escuta pelo microfone — mais um **mural de recados** e um **ranking**
+compartilhados entre quem visita.
 
 É um PWA: dá para instalar no celular ou no computador. O jogo e o afinador
 funcionam sem internet; mural e ranking, naturalmente, precisam de conexão.
@@ -47,6 +48,7 @@ src/
 ├─ pages/
 │  ├─ Home.tsx           tela inicial, com o fundo 3D que segue o mouse
 │  ├─ Snake.tsx          jogo: placar, controles e telas de pausa/fim
+│  ├─ Corrida.tsx        motocross: painel, controles e aviso de girar a tela
 │  └─ Tuner.tsx          afinador: leitura, instruções e erros de microfone
 ├─ components/
 │  ├─ three/             tudo que desenha em 3D (three.js)
@@ -55,6 +57,9 @@ src/
 ├─ lib/
 │  ├─ snake.ts           regras do jogo, sem React e sem 3D
 │  ├─ useSnakeGame.ts    relógio do jogo, pontuação e recorde
+│  ├─ motocross.ts       física da corrida e geração da pista
+│  ├─ useCorrida.ts      relógio da corrida e melhor tempo
+│  ├─ cameraCorrida.ts   enquadramento lateral da corrida
 │  ├─ pitch.ts           detecção de altura (algoritmo YIN)
 │  ├─ useTuner.ts        microfone, filtros e estabilização da leitura
 │  └─ tunings.ts         afinações padrão, Drop D e meio tom abaixo

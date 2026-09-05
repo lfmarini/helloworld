@@ -18,6 +18,14 @@ const cards = [
     ring: "group-hover:border-neon-cyan/50",
   },
   {
+    to: "/corrida",
+    emoji: "🏍️",
+    title: "Motocross",
+    desc: "Corrida lateral com rampas, turbo e motor que esquenta. Melhor com o celular deitado.",
+    accent: "from-neon-magenta/25",
+    ring: "group-hover:border-neon-magenta/50",
+  },
+  {
     to: "/afinador",
     emoji: "🎸",
     title: "Afinador",
@@ -75,7 +83,7 @@ export default function Home() {
           sem internet.
         </motion.p>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card, i) => (
             <motion.div
               key={card.to}

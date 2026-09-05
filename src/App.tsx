@@ -8,6 +8,7 @@ import Loader from "./components/Loader";
 // entra nelas. Isso mantem o carregamento inicial da home leve.
 const Snake = lazy(() => import("./pages/Snake"));
 const Tuner = lazy(() => import("./pages/Tuner"));
+const Corrida = lazy(() => import("./pages/Corrida"));
 
 export default function App() {
   const location = useLocation();
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/snake" element={<Snake />} />
           <Route path="/afinador" element={<Tuner />} />
+          <Route path="/corrida" element={<Corrida />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>
