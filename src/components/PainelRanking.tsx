@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { enviarPontuacao, listarRanking, type Pontuacao } from "../lib/api";
+import {
+  enviarPontuacao,
+  listarRanking,
+  type JogoDoRanking,
+  type Pontuacao,
+} from "../lib/api";
 import { useNomeSalvo } from "../lib/useNomeSalvo";
 
 const NOME_MAX = 20;
@@ -9,12 +14,22 @@ const NOME_MAX = 20;
 const MEDALHAS = ["🥇", "🥈", "🥉"];
 
 export default function PainelRanking({
+  jogo,
   pontos,
   aoVoltar,
+  formatar = (v) => String(v),
+  rotuloEnvio,
 }: {
-  /** Pontuação recém-feita. Zero significa "só vim olhar a lista". */
+  jogo: JogoDoRanking;
+  /** Marca recém-feita. Zero significa "só vim olhar a lista". */
   pontos: number;
   aoVoltar: () => void;
+  /**
+   * Como mostrar o valor. Na corrida ele é tempo em centésimos de segundo, e
+   * "5436" na tela não diria nada a ninguém.
+   */
+  formatar?: (valor: number) => string;
+  rotuloEnvio?: string;
 }) {
   const [itens, setItens] = useState<Pontuacao[] | null>(null);
   const [nome, salvarNome] = useNomeSalvo();
@@ -24,20 +39,20 @@ export default function PainelRanking({
 
   useEffect(() => {
     let vivo = true;
-    listarRanking()
+    listarRanking(jogo)
       .then((r) => vivo && setItens(r.itens))
       .catch((e: Error) => vivo && setErro(e.message));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [jogo]);
 
   async function entrarNoRanking() {
     if (!nome.trim() || enviando) return;
     setEnviando(true);
     setErro(null);
     try {
-      const r = await enviarPontuacao(nome.trim(), pontos);
+      const r = await enviarPontuacao(jogo, nome.trim(), pontos);
       setItens(r.itens);
       setEnviado(true);
     } catch (e) {
@@ -72,7 +87,7 @@ export default function PainelRanking({
             disabled={!nome.trim() || enviando}
             className="shrink-0 rounded-xl bg-neon-cyan/20 px-4 py-2.5 font-display text-sm font-semibold text-neon-cyan transition-colors hover:bg-neon-cyan/30 disabled:opacity-40"
           >
-            {enviando ? "…" : `Enviar ${pontos}`}
+            {enviando ? "…" : (rotuloEnvio ?? `Enviar ${formatar(pontos)}`)}
           </button>
         </div>
       )}
@@ -124,7 +139,7 @@ export default function PainelRanking({
                 {item.nome}
               </span>
               <span className="shrink-0 font-display text-sm font-bold tabular-nums text-white">
-                {item.pontos}
+                {formatar(item.pontos)}
               </span>
             </motion.div>
           );

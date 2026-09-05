@@ -50,7 +50,14 @@ export const listarRecados = () => pedir<{ itens: Recado[] }>("/api/recados");
 export const enviarRecado = (nome: string, texto: string) =>
   enviarJson<{ itens: Recado[] }>("/api/recados", { nome, texto });
 
-export const listarRanking = () => pedir<{ itens: Pontuacao[] }>("/api/ranking");
+/** Cada jogo tem a sua tabela. O servidor só aceita estes nomes. */
+export type JogoDoRanking = "cobrinha" | "corrida" | "plataforma";
 
-export const enviarPontuacao = (nome: string, pontos: number) =>
-  enviarJson<{ itens: Pontuacao[] }>("/api/ranking", { nome, pontos });
+export const listarRanking = (jogo: JogoDoRanking) =>
+  pedir<{ itens: Pontuacao[] }>(`/api/ranking?jogo=${jogo}`);
+
+export const enviarPontuacao = (
+  jogo: JogoDoRanking,
+  nome: string,
+  pontos: number,
+) => enviarJson<{ itens: Pontuacao[] }>("/api/ranking", { jogo, nome, pontos });

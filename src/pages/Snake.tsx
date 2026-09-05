@@ -107,7 +107,11 @@ export default function Snake() {
         {status === "ready" && (
           <Overlay key="ready">
             {verRanking ? (
-              <PainelRanking pontos={0} aoVoltar={() => setVerRanking(false)} />
+              <PainelRanking
+                jogo="cobrinha"
+                pontos={0}
+                aoVoltar={() => setVerRanking(false)}
+              />
             ) : (
               <>
                 <h1 className="font-display text-4xl font-bold sm:text-5xl">
@@ -143,6 +147,7 @@ export default function Snake() {
           <Overlay key="over">
             {verRanking ? (
               <PainelRanking
+                jogo="cobrinha"
                 pontos={score}
                 aoVoltar={() => setVerRanking(false)}
               />

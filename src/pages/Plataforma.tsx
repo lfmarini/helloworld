@@ -1,8 +1,9 @@
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import PageShell from "../components/PageShell";
 import BackLink from "../components/BackLink";
 import Loader from "../components/Loader";
+import PainelRanking from "../components/PainelRanking";
 import { usePlataforma } from "../lib/usePlataforma";
 import { useTelaAcesa, useToque } from "../lib/useToque";
 
@@ -15,6 +16,7 @@ export default function Plataforma() {
   const { comandosRef, status, painel, recorde, comecar, alternarPausa } = jogo;
   const teclas = useRef(new Set<string>());
   const toque = useToque();
+  const [verRanking, setVerRanking] = useState(false);
 
   useTelaAcesa(status === "jogando");
 
@@ -70,6 +72,12 @@ export default function Plataforma() {
   }, [comandosRef, alternarPausa, comecar, status]);
 
   const jogando = status === "jogando";
+
+  // Comecar sempre fecha o ranking, senao ele ficaria por cima do jogo.
+  const jogarDeNovo = useCallback(() => {
+    setVerRanking(false);
+    comecar();
+  }, [comecar]);
 
   return (
     <PageShell className="relative h-dvh overflow-hidden bg-void select-none">
@@ -148,6 +156,14 @@ export default function Plataforma() {
       <AnimatePresence>
         {status === "pronto" && (
           <Sobreposicao key="pronto">
+            {verRanking ? (
+              <PainelRanking
+                jogo="plataforma"
+                pontos={0}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
             <h1 className="font-display text-3xl font-bold sm:text-4xl">
               Salto <span className="text-neon-cyan">Neon</span>
             </h1>
@@ -159,11 +175,16 @@ export default function Plataforma() {
               Segurar o botão de pulo pula mais alto — é assim que se passa pelos
               vãos maiores.
             </p>
-            <Botao onClick={comecar}>Começar</Botao>
+            <Botao onClick={jogarDeNovo}>Começar</Botao>
+            <BotaoSecundario onClick={() => setVerRanking(true)}>
+              Ver ranking
+            </BotaoSecundario>
             {recorde > 0 && (
               <p className="mt-3 text-xs text-white/30">
                 Seu recorde: {recorde} pontos
               </p>
+            )}
+              </>
             )}
           </Sobreposicao>
         )}
@@ -180,6 +201,14 @@ export default function Plataforma() {
 
         {status === "venceu" && (
           <Sobreposicao key="venceu">
+            {verRanking ? (
+              <PainelRanking
+                jogo="plataforma"
+                pontos={Math.max(1, painel.pontos)}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
             <p className="font-display text-xs tracking-[0.3em] text-neon-cyan uppercase">
               Chegou na bandeira
             </p>
@@ -190,12 +219,25 @@ export default function Plataforma() {
               {painel.moedas} moedas ·{" "}
               {painel.pontos >= recorde ? "novo recorde! 🏁" : `recorde: ${recorde}`}
             </p>
-            <Botao onClick={comecar}>Jogar de novo</Botao>
+            <Botao onClick={jogarDeNovo}>Jogar de novo</Botao>
+            <BotaoSecundario onClick={() => setVerRanking(true)}>
+              Entrar no ranking
+            </BotaoSecundario>
+              </>
+            )}
           </Sobreposicao>
         )}
 
         {status === "acabou" && (
           <Sobreposicao key="acabou">
+            {verRanking ? (
+              <PainelRanking
+                jogo="plataforma"
+                pontos={Math.max(1, painel.pontos)}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
             <p className="font-display text-xs tracking-[0.3em] text-neon-magenta uppercase">
               Fim de jogo
             </p>
@@ -205,7 +247,12 @@ export default function Plataforma() {
             <p className="mt-2 text-sm text-white/50">
               As três vidas acabaram. Recorde: {recorde}
             </p>
-            <Botao onClick={comecar}>Tentar de novo</Botao>
+            <Botao onClick={jogarDeNovo}>Tentar de novo</Botao>
+            <BotaoSecundario onClick={() => setVerRanking(true)}>
+              Entrar no ranking
+            </BotaoSecundario>
+              </>
+            )}
           </Sobreposicao>
         )}
       </AnimatePresence>
@@ -340,6 +387,23 @@ function Botao({
     <button
       onClick={onClick}
       className="mt-5 w-full rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-6 py-3 font-display font-semibold text-void transition-transform hover:scale-[1.03] active:scale-95"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BotaoSecundario({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-3 w-full rounded-xl bg-white/5 px-6 py-3 font-display font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
     >
       {children}
     </button>

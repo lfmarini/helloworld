@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import PageShell from "../components/PageShell";
 import BackLink from "../components/BackLink";
 import Loader from "../components/Loader";
+import PainelRanking from "../components/PainelRanking";
 import { COMPRIMENTO, formataTempo } from "../lib/motocross";
 import { useCorrida } from "../lib/useCorrida";
 import { useTelaAcesa, useToque } from "../lib/useToque";
@@ -15,6 +16,7 @@ export default function Corrida() {
   const [retrato, setRetrato] = useState(false);
   const teclas = useRef(new Set<string>());
   const toque = useToque();
+  const [verRanking, setVerRanking] = useState(false);
 
   // Sem isto o celular apaga a tela no meio da corrida: o dedo fica parado
   // em cima dos botoes e o sistema entende que ninguem esta usando.
@@ -106,6 +108,15 @@ export default function Corrida() {
   }, []);
 
   const emCorrida = status === "correndo";
+  // O ranking da corrida guarda centésimos de segundo, para o valor ficar
+  // inteiro no servidor. Aqui voltamos a mostrar como tempo.
+  const centesimos = Math.max(1, Math.round(painel.tempo * 100));
+  const comoTempo = (v: number) => formataTempo(v / 100);
+
+  const largar = useCallback(() => {
+    setVerRanking(false);
+    comecar();
+  }, [comecar]);
 
   return (
     <PageShell className="relative h-dvh overflow-hidden bg-void select-none">
@@ -241,6 +252,15 @@ export default function Corrida() {
 
         {!retrato && status === "pronto" && (
           <Sobreposicao key="pronto">
+            {verRanking ? (
+              <PainelRanking
+                jogo="corrida"
+                pontos={0}
+                formatar={comoTempo}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
             <h1 className="font-display text-3xl font-bold sm:text-4xl">
               Moto<span className="text-neon-magenta">cross</span>
             </h1>
@@ -249,7 +269,10 @@ export default function Corrida() {
               — se ferver, você para. Nas rampas, endireite a moto no ar antes
               de pousar, senão capota.
             </p>
-            <Botao onClick={comecar}>Largada</Botao>
+            <Botao onClick={largar}>Largada</Botao>
+            <BotaoSecundario onClick={() => setVerRanking(true)}>
+              Ver ranking
+            </BotaoSecundario>
             {toque ? (
               <>
                 <BotaoSecundario onClick={telaCheia}>Tela cheia</BotaoSecundario>
@@ -262,6 +285,8 @@ export default function Corrida() {
               <p className="mt-3 text-xs text-white/30">
                 Espaço acelera · Shift dá turbo · ↑ ↓ mudam de faixa
               </p>
+            )}
+              </>
             )}
           </Sobreposicao>
         )}
@@ -278,6 +303,16 @@ export default function Corrida() {
 
         {!retrato && status === "terminou" && (
           <Sobreposicao key="terminou">
+            {verRanking ? (
+              <PainelRanking
+                jogo="corrida"
+                pontos={centesimos}
+                formatar={comoTempo}
+                rotuloEnvio={`Enviar ${formataTempo(painel.tempo)}`}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
             <p className="font-display text-xs tracking-[0.3em] text-neon-cyan uppercase">
               Chegada
             </p>
@@ -289,7 +324,12 @@ export default function Corrida() {
                 ? "Novo recorde! 🏁"
                 : `Seu recorde é ${recorde ? formataTempo(recorde) : "—"}`}
             </p>
-            <Botao onClick={comecar}>Correr de novo</Botao>
+            <Botao onClick={largar}>Correr de novo</Botao>
+            <BotaoSecundario onClick={() => setVerRanking(true)}>
+              Entrar no ranking
+            </BotaoSecundario>
+              </>
+            )}
           </Sobreposicao>
         )}
       </AnimatePresence>
