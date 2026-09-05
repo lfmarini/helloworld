@@ -5,6 +5,7 @@ import { useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { GRID, type Vec } from "../../lib/snake";
+import { cameraPlacement } from "../../lib/cameraFit";
 import type { Game } from "../../lib/useSnakeGame";
 import { DPR, usePageVisible } from "../../lib/usePageVisible";
 
@@ -267,67 +268,6 @@ function Board() {
 }
 
 /**
- * De onde a câmera olha. Em tela deitada, bem inclinada, para dar profundidade.
- * Em tela em pé, mais de cima: com a inclinação forte o tabuleiro vira um
- * trapézio muito exagerado num celular.
- */
-const DIR_DEITADA = new THREE.Vector3(0, 15.5, 12.5).normalize();
-const DIR_EM_PE = new THREE.Vector3(0, 16, 7).normalize();
-
-function direcaoPara(aspect: number) {
-  return aspect < 1 ? DIR_EM_PE : DIR_DEITADA;
-}
-
-/**
- * Descobre a que distância a câmera precisa ficar para o tabuleiro inteiro
- * caber na tela.
- *
- * Chutar valores fixos não funciona: o mesmo número que enquadra bem num
- * monitor deixa metade do tabuleiro de fora num celular em pé. Aqui fazemos
- * uma busca binária — testamos uma distância, verificamos se os oito cantos
- * do tabuleiro caem dentro do campo de visão, e vamos ajustando.
- */
-function fitDistance(fov: number, aspect: number, dir: THREE.Vector3): number {
-  const half = H + 1.2; // metade do tabuleiro + as paredes + uma folga
-  const corners: THREE.Vector3[] = [];
-  for (const x of [-half, half]) {
-    for (const z of [-half, half]) {
-      for (const y of [0, 1]) corners.push(new THREE.Vector3(x, y, z));
-    }
-  }
-
-  const vFov = THREE.MathUtils.degToRad(fov) / 2;
-  const hFov = Math.atan(Math.tan(vFov) * aspect);
-  const probe = new THREE.PerspectiveCamera(fov, aspect, 0.1, 300);
-  const tmp = new THREE.Vector3();
-
-  const cabe = (dist: number) => {
-    probe.position.copy(dir).multiplyScalar(dist);
-    probe.lookAt(0, 0, 0);
-    probe.updateMatrixWorld(true);
-    return corners.every((c) => {
-      tmp.copy(c);
-      probe.worldToLocal(tmp);
-      const depth = -tmp.z; // no espaço da câmera, o que está à frente tem z negativo
-      if (depth <= 0.1) return false;
-      return (
-        Math.abs(tmp.x) <= depth * Math.tan(hFov) &&
-        Math.abs(tmp.y) <= depth * Math.tan(vFov)
-      );
-    });
-  };
-
-  let perto = 8;
-  let longe = 140;
-  for (let i = 0; i < 30; i++) {
-    const meio = (perto + longe) / 2;
-    if (cabe(meio)) longe = meio;
-    else perto = meio;
-  }
-  return longe;
-}
-
-/**
  * Distância da câmera para a tela atual.
  *
  * Vira um hook próprio porque a névoa também precisa desse número: numa tela
@@ -338,12 +278,8 @@ function fitDistance(fov: number, aspect: number, dir: THREE.Vector3): number {
 function useCameraPlacement() {
   const { camera, size } = useThree();
   return useMemo(() => {
-    const aspect = size.width / size.height;
     const fov = (camera as THREE.PerspectiveCamera).fov ?? 45;
-    const dir = direcaoPara(aspect);
-    // 3% de margem para o brilho das paredes não encostar na borda da tela.
-    const dist = fitDistance(fov, aspect, dir) * 1.03;
-    return { dist, base: dir.clone().multiplyScalar(dist) };
+    return cameraPlacement(fov, size.width, size.height);
   }, [size.width, size.height, camera]);
 }
 
@@ -377,14 +313,14 @@ function Rig({
 
 /** Conteúdo da cena. Fica dentro do Canvas para poder medir o tamanho da tela. */
 function Scene({ game, reduced }: { game: Game; reduced: boolean }) {
-  const { dist, base } = useCameraPlacement();
+  const { base, fog } = useCameraPlacement();
 
   return (
     <>
       {/* A névoa começa depois do tabuleiro e termina bem além dele. Amarrar
           esses números à distância da câmera é o que faz a cena funcionar
           igualmente no monitor deitado e no celular em pé. */}
-      <fog attach="fog" args={["#05060a", dist * 0.95, dist * 2.4]} />
+      <fog attach="fog" args={["#05060a", fog[0], fog[1]]} />
 
       <ambientLight intensity={0.45} />
       <directionalLight position={[-6, 12, 6]} intensity={1.5} color="#8ff0ff" />
