@@ -1,9 +1,9 @@
 # HelloWorld
 
 Brinquedos que rodam dentro do navegador — um **jogo da cobrinha em 3D**, uma
-**corrida de motocross**, um **jogo de plataforma** e um **afinador de violão**
-que escuta pelo microfone — mais um **mural de recados** e um **ranking**
-compartilhados entre quem visita.
+**corrida de motocross**, um **jogo de plataforma**, um **xadrez assistido** e
+um **afinador de violão** que escuta pelo microfone — mais um **mural de
+recados** e **rankings** compartilhados entre quem visita.
 
 É um PWA: dá para instalar no celular ou no computador. O jogo e o afinador
 funcionam sem internet; mural e ranking, naturalmente, precisam de conexão.
@@ -50,6 +50,7 @@ src/
 │  ├─ Snake.tsx          jogo: placar, controles e telas de pausa/fim
 │  ├─ Corrida.tsx        motocross: painel, controles e aviso de girar a tela
 │  ├─ Plataforma.tsx     plataforma: placar, vidas e controles
+│  ├─ Xadrez.tsx         xadrez: tabuleiro e painel do assistente
 │  └─ Tuner.tsx          afinador: leitura, instruções e erros de microfone
 ├─ components/
 │  ├─ three/             tudo que desenha em 3D (three.js)
@@ -63,6 +64,9 @@ src/
 │  ├─ cameraCorrida.ts   enquadramento lateral da corrida
 │  ├─ plataforma.ts      física, colisões e a fase do jogo de plataforma
 │  ├─ usePlataforma.ts   relógio do jogo, pontos e vidas
+│  ├─ xadrez.ts          regras do xadrez, sem interface
+│  ├─ xadrezIA.ts        adversário (alfa-beta) e gerador de explicações
+│  ├─ xadrezAberturas.ts livro de aberturas com a ideia de cada linha
 │  ├─ pitch.ts           detecção de altura (algoritmo YIN)
 │  ├─ useTuner.ts        microfone, filtros e estabilização da leitura
 │  └─ tunings.ts         afinações padrão, Drop D e meio tom abaixo
@@ -153,6 +157,26 @@ Um piloto automático também atravessa a fase inteira a cada execução, com os
 inimigos desligados. O que esse teste precisa provar é que a **geometria** tem
 saída; acertar o pulo em cima de um inimigo depende de mira e ritmo, e isso é
 coberto por testes separados.
+
+### Por que o xadrez é conferido contando posições
+
+As regras do xadrez são cheias de exceções — roque, en passant, promoção,
+peça cravada — e um erro em qualquer uma delas passa despercebido por
+dezenas de partidas.
+
+O teste usado aqui é o **perft**, padrão em programas de xadrez: conta todas
+as posições possíveis até certa profundidade e compara com números conferidos
+há décadas. A partir da posição inicial são 20, 400, 8.902 e 197.281. Se
+qualquer regra estiver errada, a contagem muda. Cinco posições diferentes são
+verificadas, incluindo uma feita justamente para exercitar roque e capturas.
+
+E há uma decisão sobre o assistente que vale registrar. O programa enxerga
+três lances à frente, e muita coisa de abertura só aparece em dez. Depois de
+1.e4 Cf6 ele sugeria **Df3**, que defende o peão e ganha na conta — e é
+exatamente o vício que todo manual manda evitar. Num jogo que se propõe a
+ensinar, isso não serve. Então, quando o cálculo não separa claramente os
+lances, o princípio decide: desenvolver, rocar, não passear com a dama. A
+sugestão virou **Cc3**, que defende o peão e desenvolve ao mesmo tempo.
 
 ---
 

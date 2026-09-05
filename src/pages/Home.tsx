@@ -34,6 +34,14 @@ const cards = [
     ring: "group-hover:border-neon-cyan/50",
   },
   {
+    to: "/xadrez",
+    emoji: "♞",
+    title: "Xadrez assistido",
+    desc: "Jogue contra o computador com um assistente que sugere lances e explica cada um.",
+    accent: "from-neon-magenta/25",
+    ring: "group-hover:border-neon-magenta/50",
+  },
+  {
     to: "/afinador",
     emoji: "🎸",
     title: "Afinador",

@@ -10,6 +10,7 @@ const Snake = lazy(() => import("./pages/Snake"));
 const Tuner = lazy(() => import("./pages/Tuner"));
 const Corrida = lazy(() => import("./pages/Corrida"));
 const Plataforma = lazy(() => import("./pages/Plataforma"));
+const Xadrez = lazy(() => import("./pages/Xadrez"));
 
 export default function App() {
   const location = useLocation();
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/afinador" element={<Tuner />} />
           <Route path="/corrida" element={<Corrida />} />
           <Route path="/plataforma" element={<Plataforma />} />
+          <Route path="/xadrez" element={<Xadrez />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>
