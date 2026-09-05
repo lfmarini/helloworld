@@ -1,9 +1,11 @@
 # HelloWorld
 
-Dois brinquedos que rodam inteiramente dentro do navegador: um **jogo da
-cobrinha em 3D** e um **afinador de violão** que escuta pelo microfone.
+Dois brinquedos que rodam dentro do navegador — um **jogo da cobrinha em 3D**
+e um **afinador de violão** que escuta pelo microfone — mais um **mural de
+recados** e um **ranking** compartilhados entre quem visita.
 
-É um PWA — dá para instalar no celular ou no computador e usar sem internet.
+É um PWA: dá para instalar no celular ou no computador. O jogo e o afinador
+funcionam sem internet; mural e ranking, naturalmente, precisam de conexão.
 
 🔗 **No ar:** https://helloworld-one-drab.vercel.app
 
@@ -50,23 +52,36 @@ src/
 │  ├─ three/             tudo que desenha em 3D (three.js)
 │  ├─ DPad.tsx           cruz direcional para telas de toque
 │  └─ Fretboard.tsx      diagrama do braço do violão, em SVG
-└─ lib/
-   ├─ snake.ts           regras do jogo, sem React e sem 3D
-   ├─ useSnakeGame.ts    relógio do jogo, pontuação e recorde
-   ├─ pitch.ts           detecção de altura (algoritmo YIN)
-   ├─ useTuner.ts        microfone, filtros e estabilização da leitura
-   └─ tunings.ts         afinações padrão, Drop D e meio tom abaixo
+├─ lib/
+│  ├─ snake.ts           regras do jogo, sem React e sem 3D
+│  ├─ useSnakeGame.ts    relógio do jogo, pontuação e recorde
+│  ├─ pitch.ts           detecção de altura (algoritmo YIN)
+│  ├─ useTuner.ts        microfone, filtros e estabilização da leitura
+│  └─ tunings.ts         afinações padrão, Drop D e meio tom abaixo
+└─ (api/ fica na raiz)
+
+api/
+├─ _armazem.ts           lê e grava no Vercel Blob, com escrita condicional
+├─ recados.ts            GET e POST do mural
+└─ ranking.ts            GET e POST do ranking
 ```
+
+> Os arquivos em `api/` só rodam publicados na Vercel. Com `npm run dev` o
+> mural e o ranking não respondem — para testá-los na sua máquina use
+> `npx vercel dev`, que sobe o site e as funções juntos.
 
 ### Ferramentas
 
 Vite · React · TypeScript · Tailwind CSS · three.js (react-three-fiber) ·
-framer-motion · vite-plugin-pwa. Não existe servidor: tudo acontece no
-navegador, e nada é enviado para lugar nenhum.
+framer-motion · vite-plugin-pwa · Vercel Blob.
+
+O jogo e o afinador acontecem inteiramente no navegador — o som do microfone
+nunca sai do aparelho. Só o mural e o ranking conversam com o servidor, e o
+que trafega é apenas o que aparece na tela: nome, texto e pontuação.
 
 ---
 
-## Duas decisões que valem explicação
+## Três decisões que valem explicação
 
 ### Por que a cobra desliza em vez de pular
 
@@ -92,6 +107,25 @@ Antes da análise o sinal passa por um filtro que corta abaixo de 55 Hz (ronco
 elétrico) e acima de 1 kHz (chiado). E leituras com pouca confiança são
 descartadas em vez de exibidas — mais vale não mostrar nada do que mostrar a
 nota errada.
+
+### Por que gravar exige uma etiqueta de versão
+
+Mural e ranking ficam cada um num arquivo JSON no Vercel Blob. Blob guarda
+arquivos, não é banco de dados: para adicionar um recado é preciso ler o
+arquivo inteiro, mexer e gravar de volta. Se duas pessoas fizessem isso ao
+mesmo tempo, as duas leriam a mesma lista e a segunda gravação apagaria a
+primeira.
+
+Por isso toda leitura traz uma **etiqueta de versão** (ETag), e a gravação diz
+"só grave se o arquivo ainda estiver nesta versão". Se alguém tiver escrito no
+meio do caminho, a gravação é recusada e o servidor lê de novo e refaz a
+alteração por cima do dado novo.
+
+Um detalhe custou tempo e vale registrar: quando o arquivo cresce, a resposta
+passa a vir comprimida e a etiqueta muda de forma — vira `W/"abc"` em vez de
+`"abc"`. A gravação condicional só aceita a segunda forma, então **tudo parava
+de gravar depois que os dados cresciam**, enquanto funcionava perfeitamente com
+os arquivos ainda pequenos. O código remove esse prefixo antes de comparar.
 
 ---
 

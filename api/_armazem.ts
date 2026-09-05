@@ -36,6 +36,22 @@ export class ConflitoDemais extends Error {
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Tira o prefixo "W/" da etiqueta de versao.
+ *
+ * Quando a resposta vem comprimida, o servidor devolve uma etiqueta "fraca"
+ * (W/"abc") em vez da forte ("abc"). As duas apontam para o mesmo conteudo,
+ * mas a gravacao condicional so aceita a forte — com a fraca ela recusa tudo,
+ * sempre, com "ETag mismatch".
+ *
+ * Isso e traicoeiro porque so aparece depois que o arquivo cresce: enquanto os
+ * dados eram poucos, nada era comprimido, a etiqueta vinha forte e tudo
+ * funcionava. Foi assim que o problema passou batido nos primeiros testes.
+ */
+function etiquetaForte(etag: string | undefined): string | undefined {
+  return etag?.replace(/^W\//, "");
+}
+
 async function ler<T>(
   caminho: string,
   padrao: T,
@@ -47,7 +63,7 @@ async function ler<T>(
     const r = await get(caminho, { access: "private", useCache: false });
     if (!r || !r.stream) return { dados: padrao };
     const texto = await new Response(r.stream).text();
-    return { dados: JSON.parse(texto) as T, etag: r.blob.etag };
+    return { dados: JSON.parse(texto) as T, etag: etiquetaForte(r.blob.etag) };
   } catch (e) {
     if (e instanceof BlobNotFoundError) return { dados: padrao };
     throw e;
