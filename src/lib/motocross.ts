@@ -54,8 +54,20 @@ const TEMP_APOS_FUNDIR = 0.25;
 const TROCA_FAIXA = 4.5;
 /** Velocidade com que a moto inclina no ar (radianos por segundo). */
 const GIRO_NO_AR = 2.6;
-/** Inclinação máxima no ar. */
+/** Inclinação máxima no ar durante o voo comum. */
 const GIRO_MAX = 1.3;
+/**
+ * Velocidade de giro na manobra.
+ *
+ * Medindo os saltos da pista, o tempo no ar fica entre 0,8 e 1,4 segundo. A
+ * 7,5 rad/s a volta consumia 0,84s — praticamente o salto inteiro, sem sobrar
+ * margem para endireitar antes de encostar, e quase toda tentativa terminava
+ * em capotada. A 9,5 rad/s a volta fecha em 0,66s e sobra tempo de mirar o
+ * pouso, que e onde esta a graca da manobra.
+ */
+const GIRO_MANOBRA = 9.5;
+/** Quanto cada volta completa desconta do tempo final. */
+const BONUS_POR_MANOBRA = 2;
 /**
  * Diferença máxima, em radianos, entre a inclinação da moto e a do chão para
  * o pouso dar certo. Acima disso, capota. ~34 graus.
@@ -193,6 +205,11 @@ export function temResfriador(pista: Pista, x: number, faixa: number): boolean {
 
 export interface Comandos {
   acelerar: boolean;
+  /**
+   * O mesmo botão tem dois sentidos: no chão acelera; no ar, gira a moto para
+   * a manobra. Reaproveitar o botão evita inventar um controle novo, e a
+   * descoberta acontece sozinha — quem segura o turbo no ar vê a moto girar.
+   */
   turbo: boolean;
   /** -1 sobe, 1 desce, 0 nada. No chão troca de faixa; no ar, inclina. */
   vertical: number;
@@ -219,6 +236,12 @@ export interface EstadoCorrida {
   tempoCapotado: number;
   tempo: number;
   terminou: boolean;
+  /** Quanto a moto já girou neste salto, em radianos (sempre positivo). */
+  rotacaoNoSalto: number;
+  /** Voltas completas fechadas com pouso limpo, na corrida toda. */
+  manobras: number;
+  /** Desconto de tempo acumulado pelas manobras, em segundos. */
+  bonus: number;
   /** Velocidade vertical imposta pelo chão no passo anterior. */
   vyChao: number;
   /** Impede trocar várias faixas com um toque só. */
@@ -242,6 +265,9 @@ export function criarEstado(): EstadoCorrida {
     tempoCapotado: 0,
     tempo: 0,
     terminou: false,
+    rotacaoNoSalto: 0,
+    manobras: 0,
+    bonus: 0,
     vyChao: 0,
     esperaFaixa: 0,
   };
@@ -250,6 +276,8 @@ export function criarEstado(): EstadoCorrida {
 export interface Eventos {
   decolou: boolean;
   pousou: boolean;
+  /** Voltas completas fechadas neste pouso. Zero na maioria dos pousos. */
+  manobras: number;
   capotou: boolean;
   fundiu: boolean;
   terminou: boolean;
@@ -258,6 +286,7 @@ export interface Eventos {
 const SEM_EVENTOS: Eventos = {
   decolou: false,
   pousou: false,
+  manobras: 0,
   capotou: false,
   fundiu: false,
   terminou: false,
@@ -298,6 +327,7 @@ export function passo(
       estado.inclinacao = 0;
       estado.vy = 0;
       estado.vyChao = 0;
+      estado.rotacaoNoSalto = 0;
       estado.noAr = false;
     }
     return eventos;
@@ -311,7 +341,8 @@ export function passo(
       estado.temperatura = TEMP_APOS_FUNDIR;
     }
   } else {
-    const turbo = comandos.turbo && comandos.acelerar;
+    // No ar o turbo vira manobra, entao nao aquece: a roda nem esta no chao.
+    const turbo = comandos.turbo && comandos.acelerar && !estado.noAr;
     if (turbo) {
       estado.temperatura += AQUECE * dt;
       if (estado.temperatura >= 1) {
@@ -350,14 +381,24 @@ export function passo(
   estado.x += estado.velocidade * dt;
 
   /* --- Faixa e inclinação --- */
-  if (estado.noAr) {
-    // No ar, o comando vertical gira a moto. Nariz para cima com a seta para
-    // cima, como no jogo original.
+  if (estado.noAr && comandos.turbo) {
+    // Manobra: giro solto e rapido, sem limite de inclinacao. O sentido padrao
+    // e para tras (salto mortal); com a seta para baixo, gira para frente.
+    const sentido = comandos.vertical > 0 ? -1 : 1;
+    const giro = sentido * GIRO_MANOBRA * dt;
+    estado.inclinacao += giro;
+    estado.rotacaoNoSalto += Math.abs(giro);
+  } else if (estado.noAr) {
+    // Voo comum: o comando vertical inclina a moto para mirar o pouso.
     estado.inclinacao -= comandos.vertical * GIRO_NO_AR * dt;
-    estado.inclinacao = Math.max(
-      -GIRO_MAX,
-      Math.min(GIRO_MAX, estado.inclinacao),
-    );
+    // O limite so vale enquanto nenhuma manobra foi tentada neste salto —
+    // senao ele desfaria a volta no instante em que o botao fosse solto.
+    if (estado.rotacaoNoSalto === 0) {
+      estado.inclinacao = Math.max(
+        -GIRO_MAX,
+        Math.min(GIRO_MAX, estado.inclinacao),
+      );
+    }
   } else if (comandos.vertical !== 0 && estado.esperaFaixa <= 0) {
     const destino = estado.faixa + comandos.vertical;
     if (destino >= 0 && destino < FAIXAS) {
@@ -389,7 +430,12 @@ export function passo(
       eventos.pousou = true;
 
       const anguloChao = inclinacaoDoChao(pista, estado.x, estado.faixa);
-      const erro = Math.abs(estado.inclinacao - anguloChao);
+      // A diferenca precisa dar a volta no circulo: depois de um salto mortal
+      // a inclinacao vale 6,3 radianos, que e a mesma coisa que zero. Sem
+      // normalizar, toda manobra completa terminaria em capotada.
+      const bruta = estado.inclinacao - anguloChao;
+      const erro = Math.abs(Math.atan2(Math.sin(bruta), Math.cos(bruta)));
+
       if (erro > LIMITE_POUSO) {
         estado.capotado = true;
         estado.tempoCapotado = TEMPO_CAPOTADO;
@@ -398,7 +444,16 @@ export function passo(
         // Pouso torto, mas dentro do limite: perde um pouco de velocidade.
         estado.velocidade *= 1 - (erro / LIMITE_POUSO) * 0.35;
         estado.inclinacao = anguloChao;
+
+        // Volta fechada e pouso limpo: vale desconto no tempo final.
+        const voltas = Math.floor(estado.rotacaoNoSalto / (Math.PI * 2));
+        if (voltas > 0) {
+          estado.manobras += voltas;
+          estado.bonus += voltas * BONUS_POR_MANOBRA;
+          eventos.manobras = voltas;
+        }
       }
+      estado.rotacaoNoSalto = 0;
     }
   } else {
     // No chão, a moto acompanha o relevo. Guardamos a velocidade vertical que
@@ -428,6 +483,14 @@ export function passo(
   }
 
   return eventos;
+}
+
+/**
+ * Tempo que vale para o recorde: o cronometro menos o desconto das manobras.
+ * Nunca fica negativo.
+ */
+export function tempoFinal(estado: EstadoCorrida): number {
+  return Math.max(0, estado.tempo - estado.bonus);
 }
 
 /** Formata segundos como "1:23.45". */

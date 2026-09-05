@@ -12,7 +12,8 @@ const CorridaScene = lazy(() => import("../components/three/CorridaScene"));
 
 export default function Corrida() {
   const corrida = useCorrida();
-  const { comandosRef, status, painel, recorde, comecar, alternarPausa } = corrida;
+  const { comandosRef, status, painel, manobraFeita, recorde, comecar, alternarPausa } =
+    corrida;
   const [retrato, setRetrato] = useState(false);
   const teclas = useRef(new Set<string>());
   const toque = useToque();
@@ -110,7 +111,7 @@ export default function Corrida() {
   const emCorrida = status === "correndo";
   // O ranking da corrida guarda centésimos de segundo, para o valor ficar
   // inteiro no servidor. Aqui voltamos a mostrar como tempo.
-  const centesimos = Math.max(1, Math.round(painel.tempo * 100));
+  const centesimos = Math.max(1, Math.round(painel.tempoFinal * 100));
   const comoTempo = (v: number) => formataTempo(v / 100);
 
   const largar = useCallback(() => {
@@ -165,6 +166,16 @@ export default function Corrida() {
             }
             aviso={painel.fundido ? "FUNDIU" : undefined}
           />
+          {painel.manobras > 0 && (
+            <div className="glass rounded-xl px-3 py-2 text-right">
+              <p className="font-display text-[9px] tracking-widest text-white/40 uppercase">
+                Manobras
+              </p>
+              <p className="font-display text-lg leading-none font-bold tabular-nums text-neon-magenta">
+                {painel.manobras}
+              </p>
+            </div>
+          )}
           <div className="glass rounded-xl px-3 py-2 text-right">
             <p className="font-display text-[9px] tracking-widest text-white/40 uppercase">
               Recorde
@@ -234,6 +245,29 @@ export default function Corrida() {
         </p>
       )}
 
+      {/* ---------- Aviso de manobra ---------- */}
+      <AnimatePresence>
+        {manobraFeita && (
+          <motion.div
+            key={manobraFeita.id}
+            initial={{ opacity: 0, scale: 0.6, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.2, y: -20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 18 }}
+            className="pointer-events-none absolute inset-x-0 top-1/3 text-center"
+          >
+            <p className="font-display text-3xl font-bold text-neon-magenta drop-shadow-[0_0_18px_rgba(240,62,200,0.8)] sm:text-4xl">
+              {manobraFeita.voltas > 1
+                ? `${manobraFeita.voltas} SALTOS MORTAIS!`
+                : "SALTO MORTAL!"}
+            </p>
+            <p className="mt-1 font-display text-lg font-bold text-neon-cyan">
+              −{manobraFeita.voltas * 2}s
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ---------- Camadas sobrepostas ---------- */}
       <AnimatePresence>
         {retrato && (
@@ -268,6 +302,10 @@ export default function Corrida() {
               Acelere até a chegada. O turbo é mais rápido, mas esquenta o motor
               — se ferver, você para. Nas rampas, endireite a moto no ar antes
               de pousar, senão capota.
+            </p>
+            <p className="mt-3 rounded-xl bg-neon-magenta/10 px-3 py-2 text-sm text-neon-magenta">
+              No ar, o turbo vira manobra: segure para girar. Volta completa com
+              pouso limpo desconta 2 segundos do seu tempo.
             </p>
             <Botao onClick={largar}>Largada</Botao>
             <BotaoSecundario onClick={() => setVerRanking(true)}>
@@ -308,7 +346,7 @@ export default function Corrida() {
                 jogo="corrida"
                 pontos={centesimos}
                 formatar={comoTempo}
-                rotuloEnvio={`Enviar ${formataTempo(painel.tempo)}`}
+                rotuloEnvio={`Enviar ${formataTempo(painel.tempoFinal)}`}
                 aoVoltar={() => setVerRanking(false)}
               />
             ) : (
@@ -317,10 +355,17 @@ export default function Corrida() {
               Chegada
             </p>
             <h2 className="mt-2 font-display text-4xl font-bold tabular-nums">
-              {formataTempo(painel.tempo)}
+              {formataTempo(painel.tempoFinal)}
             </h2>
+            {painel.manobras > 0 && (
+              <p className="mt-2 text-sm text-neon-magenta">
+                {formataTempo(painel.tempo)} no cronômetro ·{" "}
+                {painel.manobras} manobra{painel.manobras > 1 ? "s" : ""} ={" "}
+                −{painel.bonus}s
+              </p>
+            )}
             <p className="mt-2 text-sm text-white/50">
-              {recorde !== null && painel.tempo <= recorde
+              {recorde !== null && painel.tempoFinal <= recorde
                 ? "Novo recorde! 🏁"
                 : `Seu recorde é ${recorde ? formataTempo(recorde) : "—"}`}
             </p>

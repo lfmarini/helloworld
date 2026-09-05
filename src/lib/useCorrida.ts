@@ -4,6 +4,7 @@ import {
   criarEstado,
   criarPista,
   passo,
+  tempoFinal,
   type Comandos,
   type EstadoCorrida,
 } from "./motocross";
@@ -43,6 +44,12 @@ export interface Painel {
   progresso: number;
   fundido: boolean;
   capotado: boolean;
+  /** Voltas completas fechadas com pouso limpo. */
+  manobras: number;
+  /** Desconto de tempo acumulado, em segundos. */
+  bonus: number;
+  /** Cronômetro menos o desconto: é este que vale para o recorde. */
+  tempoFinal: number;
 }
 
 export function useCorrida() {
@@ -64,7 +71,15 @@ export function useCorrida() {
     progresso: 0,
     fundido: false,
     capotado: false,
+    manobras: 0,
+    bonus: 0,
+    tempoFinal: 0,
   });
+  /** Aviso curto na tela quando uma manobra fecha. */
+  const [manobraFeita, setManobraFeita] = useState<{
+    voltas: number;
+    id: number;
+  } | null>(null);
   const [recorde, setRecorde] = useState<number | null>(lerRecorde);
 
   const comecar = useCallback(() => {
@@ -109,16 +124,21 @@ export function useCorrida() {
           efeitosRef.current.capotadas += 1;
           efeitosRef.current.tremor = 1;
         }
+        if (ev.manobras > 0) {
+          setManobraFeita({ voltas: ev.manobras, id: agora });
+        }
         if (ev.pousou) {
           efeitosRef.current.pousos += 1;
           efeitosRef.current.tremor = Math.min(1, efeitosRef.current.tremor + 0.35);
         }
         if (ev.terminou) {
           setStatus("terminou");
+          // O recorde considera o tempo já descontado das manobras.
+          const final = tempoFinal(e);
           setRecorde((atual) => {
-            if (atual === null || e.tempo < atual) {
-              gravarRecorde(e.tempo);
-              return e.tempo;
+            if (atual === null || final < atual) {
+              gravarRecorde(final);
+              return final;
             }
             return atual;
           });
@@ -136,6 +156,9 @@ export function useCorrida() {
           progresso: Math.min(1, e.x / COMPRIMENTO),
           fundido: e.fundido,
           capotado: e.capotado,
+          manobras: e.manobras,
+          bonus: e.bonus,
+          tempoFinal: tempoFinal(e),
         });
       }
     };
@@ -143,6 +166,13 @@ export function useCorrida() {
     quadro = requestAnimationFrame(laco);
     return () => cancelAnimationFrame(quadro);
   }, [status, pista]);
+
+  // O aviso de manobra some sozinho depois de um instante.
+  useEffect(() => {
+    if (!manobraFeita) return;
+    const t = setTimeout(() => setManobraFeita(null), 1500);
+    return () => clearTimeout(t);
+  }, [manobraFeita]);
 
   // Pausa sozinho ao trocar de aba — numa corrida contra o relógio, isso
   // evita perder o tempo por causa de uma notificação.
@@ -165,6 +195,7 @@ export function useCorrida() {
     efeitosRef,
     status,
     painel,
+    manobraFeita,
     recorde,
     comecar,
     pausar,
