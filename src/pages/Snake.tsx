@@ -1,9 +1,10 @@
-import { Suspense, lazy, useCallback, useEffect, useRef } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import PageShell from "../components/PageShell";
 import BackLink from "../components/BackLink";
 import Loader from "../components/Loader";
 import DPad from "../components/DPad";
+import PainelRanking from "../components/PainelRanking";
 import { useSnakeGame } from "../lib/useSnakeGame";
 import { useSwipe } from "../lib/useSwipe";
 import type { Dir } from "../lib/snake";
@@ -28,6 +29,14 @@ export default function Snake() {
   const game = useSnakeGame();
   const boardRef = useRef<HTMLDivElement>(null);
   const { status, score, best, start, togglePause, turnTo } = game;
+  const [verRanking, setVerRanking] = useState(false);
+
+  // Comecar uma partida sempre fecha o painel do ranking, senao ele
+  // continuaria por cima do jogo ja rodando.
+  const jogar = useCallback(() => {
+    setVerRanking(false);
+    start();
+  }, [start]);
 
   useSwipe(boardRef, turnTo);
 
@@ -47,12 +56,12 @@ export default function Snake() {
       }
       if (key === "enter" && (status === "ready" || status === "over")) {
         e.preventDefault();
-        start();
+        jogar();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [turnTo, togglePause, start, status]);
+  }, [turnTo, togglePause, jogar, status]);
 
   const handleDPad = useCallback((dir: Dir) => turnTo(dir), [turnTo]);
 
@@ -90,17 +99,26 @@ export default function Snake() {
       <AnimatePresence>
         {status === "ready" && (
           <Overlay key="ready">
-            <h1 className="font-display text-4xl font-bold sm:text-5xl">
-              Cobrinha <span className="text-neon-cyan">3D</span>
-            </h1>
-            <p className="mt-3 max-w-xs text-sm text-white/55">
-              Coma os cubos rosa para crescer. Bater na parede ou em si mesma
-              encerra a partida — e ela acelera conforme você pontua.
-            </p>
-            <Button onClick={start}>Começar</Button>
-            <p className="mt-4 text-xs text-white/30">
-              Deslize o dedo na tela ou use as setas
-            </p>
+            {verRanking ? (
+              <PainelRanking pontos={0} aoVoltar={() => setVerRanking(false)} />
+            ) : (
+              <>
+                <h1 className="font-display text-4xl font-bold sm:text-5xl">
+                  Cobrinha <span className="text-neon-cyan">3D</span>
+                </h1>
+                <p className="mt-3 max-w-xs text-sm text-white/55">
+                  Coma os cubos rosa para crescer. Bater na parede ou em si mesma
+                  encerra a partida — e ela acelera conforme você pontua.
+                </p>
+                <Button onClick={jogar}>Começar</Button>
+                <BotaoSecundario onClick={() => setVerRanking(true)}>
+                  Ver ranking
+                </BotaoSecundario>
+                <p className="mt-4 text-xs text-white/30">
+                  Deslize o dedo na tela ou use as setas
+                </p>
+              </>
+            )}
           </Overlay>
         )}
 
@@ -116,16 +134,28 @@ export default function Snake() {
 
         {status === "over" && (
           <Overlay key="over">
-            <p className="font-display text-xs tracking-[0.3em] text-neon-magenta uppercase">
-              Fim de jogo
-            </p>
-            <h2 className="mt-3 font-display text-6xl font-bold">{score}</h2>
-            <p className="mt-2 text-sm text-white/50">
-              {score >= best && score > 0
-                ? "Novo recorde! 🏆"
-                : `Seu recorde é ${best}`}
-            </p>
-            <Button onClick={start}>Jogar de novo</Button>
+            {verRanking ? (
+              <PainelRanking
+                pontos={score}
+                aoVoltar={() => setVerRanking(false)}
+              />
+            ) : (
+              <>
+                <p className="font-display text-xs tracking-[0.3em] text-neon-magenta uppercase">
+                  Fim de jogo
+                </p>
+                <h2 className="mt-3 font-display text-6xl font-bold">{score}</h2>
+                <p className="mt-2 text-sm text-white/50">
+                  {score >= best && score > 0
+                    ? "Novo recorde! 🏆"
+                    : `Seu recorde é ${best}`}
+                </p>
+                <Button onClick={jogar}>Jogar de novo</Button>
+                <BotaoSecundario onClick={() => setVerRanking(true)}>
+                  {score > 0 ? "Entrar no ranking" : "Ver ranking"}
+                </BotaoSecundario>
+              </>
+            )}
           </Overlay>
         )}
       </AnimatePresence>
@@ -191,6 +221,23 @@ function Button({
     <button
       onClick={onClick}
       className="mt-7 w-full rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-6 py-3 font-display font-semibold text-void transition-transform hover:scale-[1.03] active:scale-95"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BotaoSecundario({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-3 w-full rounded-xl bg-white/5 px-6 py-3 font-display font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
     >
       {children}
     </button>

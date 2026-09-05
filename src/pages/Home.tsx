@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import PageShell from "../components/PageShell";
+import Mural from "../components/Mural";
 
 // O fundo 3D e carregado por ultimo e em separado: a home aparece na hora,
 // e o three.js chega depois sem travar o primeiro desenho da tela.
@@ -28,8 +29,10 @@ const cards = [
 
 export default function Home() {
   return (
-    <PageShell className="relative flex min-h-dvh flex-col overflow-hidden">
-      {/* Camada 3D de fundo */}
+    <PageShell className="relative">
+      {/* A capa ocupa a tela inteira; o mural fica logo abaixo, ao rolar. */}
+      <section className="relative flex min-h-dvh flex-col overflow-hidden">
+        {/* Camada 3D de fundo */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <Suspense fallback={null}>
           <HomeScene />
@@ -100,6 +103,22 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
+
+          {/* Convite para rolar: sem isso ninguem descobre o mural. */}
+          <motion.a
+            href="#mural"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-12 inline-flex items-center gap-2 self-start font-display text-xs tracking-widest text-white/35 uppercase transition-colors hover:text-white/70"
+          >
+            Mural de recados <span aria-hidden>&#8595;</span>
+          </motion.a>
+        </div>
+      </section>
+
+      <div id="mural" className="scroll-mt-8">
+        <Mural />
       </div>
     </PageShell>
   );
