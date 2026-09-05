@@ -26,6 +26,14 @@ const cards = [
     ring: "group-hover:border-neon-magenta/50",
   },
   {
+    to: "/plataforma",
+    emoji: "👾",
+    title: "Salto Neon",
+    desc: "Plataforma clássico: correr, pular, pisar em inimigo e chegar na bandeira.",
+    accent: "from-neon-cyan/25",
+    ring: "group-hover:border-neon-cyan/50",
+  },
+  {
     to: "/afinador",
     emoji: "🎸",
     title: "Afinador",

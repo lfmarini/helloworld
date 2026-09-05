@@ -9,6 +9,7 @@ import Loader from "./components/Loader";
 const Snake = lazy(() => import("./pages/Snake"));
 const Tuner = lazy(() => import("./pages/Tuner"));
 const Corrida = lazy(() => import("./pages/Corrida"));
+const Plataforma = lazy(() => import("./pages/Plataforma"));
 
 export default function App() {
   const location = useLocation();
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/snake" element={<Snake />} />
           <Route path="/afinador" element={<Tuner />} />
           <Route path="/corrida" element={<Corrida />} />
+          <Route path="/plataforma" element={<Plataforma />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>

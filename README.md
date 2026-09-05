@@ -1,8 +1,8 @@
 # HelloWorld
 
 Brinquedos que rodam dentro do navegador — um **jogo da cobrinha em 3D**, uma
-**corrida de motocross** de rolagem lateral e um **afinador de violão** que
-escuta pelo microfone — mais um **mural de recados** e um **ranking**
+**corrida de motocross**, um **jogo de plataforma** e um **afinador de violão**
+que escuta pelo microfone — mais um **mural de recados** e um **ranking**
 compartilhados entre quem visita.
 
 É um PWA: dá para instalar no celular ou no computador. O jogo e o afinador
@@ -49,6 +49,7 @@ src/
 │  ├─ Home.tsx           tela inicial, com o fundo 3D que segue o mouse
 │  ├─ Snake.tsx          jogo: placar, controles e telas de pausa/fim
 │  ├─ Corrida.tsx        motocross: painel, controles e aviso de girar a tela
+│  ├─ Plataforma.tsx     plataforma: placar, vidas e controles
 │  └─ Tuner.tsx          afinador: leitura, instruções e erros de microfone
 ├─ components/
 │  ├─ three/             tudo que desenha em 3D (three.js)
@@ -60,6 +61,8 @@ src/
 │  ├─ motocross.ts       física da corrida e geração da pista
 │  ├─ useCorrida.ts      relógio da corrida e melhor tempo
 │  ├─ cameraCorrida.ts   enquadramento lateral da corrida
+│  ├─ plataforma.ts      física, colisões e a fase do jogo de plataforma
+│  ├─ usePlataforma.ts   relógio do jogo, pontos e vidas
 │  ├─ pitch.ts           detecção de altura (algoritmo YIN)
 │  ├─ useTuner.ts        microfone, filtros e estabilização da leitura
 │  └─ tunings.ts         afinações padrão, Drop D e meio tom abaixo
@@ -131,6 +134,25 @@ passa a vir comprimida e a etiqueta muda de forma — vira `W/"abc"` em vez de
 `"abc"`. A gravação condicional só aceita a segunda forma, então **tudo parava
 de gravar depois que os dados cresciam**, enquanto funcionava perfeitamente com
 os arquivos ainda pequenos. O código remove esse prefixo antes de comparar.
+
+### Por que a fase tem regras conferidas por teste
+
+O jogo de plataforma tem duas regras que o teste verifica na fase inteira, e
+as duas vieram de erro real cometido ao desenhá-la:
+
+**Céu aberto antes de cada buraco.** Um bloco logo acima do ponto onde se
+pula corta o salto pela metade — o jogador bate a cabeça e cai no buraco sem
+ter feito nada errado. Acontecia em dois pontos.
+
+**Espaço acima de cada inimigo, em toda a patrulha dele.** Sem dois blocos
+livres não dá para cair em cima, e o encontro vira armadilha. Foi por isso
+que os inimigos ganharam raio de patrulha: soltos, eles desciam a fase e
+paravam justamente embaixo de um teto ou na beirada de um buraco.
+
+Um piloto automático também atravessa a fase inteira a cada execução, com os
+inimigos desligados. O que esse teste precisa provar é que a **geometria** tem
+saída; acertar o pulo em cima de um inimigo depende de mira e ritmo, e isso é
+coberto por testes separados.
 
 ---
 
