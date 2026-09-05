@@ -65,8 +65,13 @@ export function useTuner(tuning: Tuning) {
   } | null>(null);
   const rafRef = useRef(0);
   const historyRef = useRef<number[]>([]);
+  // A afinação escolhida é lida de dentro do laço de análise. Guardamos num
+  // ref (atualizado por efeito, não durante a renderização) para que trocar de
+  // afinação não precise reiniciar o microfone.
   const tuningRef = useRef(tuning);
-  tuningRef.current = tuning;
+  useEffect(() => {
+    tuningRef.current = tuning;
+  }, [tuning]);
 
   /** Libera microfone e áudio. Chamado ao sair da tela e ao desligar. */
   const stop = useCallback(() => {
