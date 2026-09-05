@@ -127,7 +127,7 @@ export default function HomeScene() {
           multiamostragem ligado, varias GPUs devolvem a tela inteira preta.
           Com "movimento reduzido" ligado no sistema, cortamos o efeito todo. */}
       {!reduced && (
-        <EffectComposer multisampling={0}>
+        <EffectComposer multisampling={0} frameBufferType={THREE.UnsignedByteType}>
           <Bloom intensity={1.35} luminanceThreshold={0.12} mipmapBlur radius={0.7} />
         </EffectComposer>
       )}

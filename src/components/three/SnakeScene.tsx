@@ -266,8 +266,17 @@ function Board() {
   );
 }
 
-/** Direção de onde a câmera olha: de cima e um pouco de frente. */
-const CAMERA_DIR = new THREE.Vector3(0, 15.5, 12.5).normalize();
+/**
+ * De onde a câmera olha. Em tela deitada, bem inclinada, para dar profundidade.
+ * Em tela em pé, mais de cima: com a inclinação forte o tabuleiro vira um
+ * trapézio muito exagerado num celular.
+ */
+const DIR_DEITADA = new THREE.Vector3(0, 15.5, 12.5).normalize();
+const DIR_EM_PE = new THREE.Vector3(0, 16, 7).normalize();
+
+function direcaoPara(aspect: number) {
+  return aspect < 1 ? DIR_EM_PE : DIR_DEITADA;
+}
 
 /**
  * Descobre a que distância a câmera precisa ficar para o tabuleiro inteiro
@@ -278,7 +287,7 @@ const CAMERA_DIR = new THREE.Vector3(0, 15.5, 12.5).normalize();
  * uma busca binária — testamos uma distância, verificamos se os oito cantos
  * do tabuleiro caem dentro do campo de visão, e vamos ajustando.
  */
-function fitDistance(fov: number, aspect: number): number {
+function fitDistance(fov: number, aspect: number, dir: THREE.Vector3): number {
   const half = H + 1.2; // metade do tabuleiro + as paredes + uma folga
   const corners: THREE.Vector3[] = [];
   for (const x of [-half, half]) {
@@ -293,7 +302,7 @@ function fitDistance(fov: number, aspect: number): number {
   const tmp = new THREE.Vector3();
 
   const cabe = (dist: number) => {
-    probe.position.copy(CAMERA_DIR).multiplyScalar(dist);
+    probe.position.copy(dir).multiplyScalar(dist);
     probe.lookAt(0, 0, 0);
     probe.updateMatrixWorld(true);
     return corners.every((c) => {
@@ -318,17 +327,37 @@ function fitDistance(fov: number, aspect: number): number {
   return longe;
 }
 
-/** Posiciona a câmera e aplica o tremor de tela. */
-function Rig({ game, reduced }: { game: Game; reduced: boolean }) {
+/**
+ * Distância da câmera para a tela atual.
+ *
+ * Vira um hook próprio porque a névoa também precisa desse número: numa tela
+ * estreita (celular em pé) a câmera recua bastante, e uma névoa com distâncias
+ * fixas engoliria o tabuleiro inteiro — foi exatamente esse o bug que deixava
+ * a tela preta no celular enquanto funcionava no computador.
+ */
+function useCameraPlacement() {
   const { camera, size } = useThree();
-  const base = useMemo(() => {
+  return useMemo(() => {
     const aspect = size.width / size.height;
     const fov = (camera as THREE.PerspectiveCamera).fov ?? 45;
+    const dir = direcaoPara(aspect);
     // 3% de margem para o brilho das paredes não encostar na borda da tela.
-    const dist = fitDistance(fov, aspect) * 1.03;
-    return CAMERA_DIR.clone().multiplyScalar(dist);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const dist = fitDistance(fov, aspect, dir) * 1.03;
+    return { dist, base: dir.clone().multiplyScalar(dist) };
   }, [size.width, size.height, camera]);
+}
+
+/** Posiciona a câmera e aplica o tremor de tela. */
+function Rig({
+  game,
+  reduced,
+  base,
+}: {
+  game: Game;
+  reduced: boolean;
+  base: THREE.Vector3;
+}) {
+  const { camera } = useThree();
 
   useFrame((_, delta) => {
     const fx = game.fxRef.current;
@@ -346,6 +375,31 @@ function Rig({ game, reduced }: { game: Game; reduced: boolean }) {
   return null;
 }
 
+/** Conteúdo da cena. Fica dentro do Canvas para poder medir o tamanho da tela. */
+function Scene({ game, reduced }: { game: Game; reduced: boolean }) {
+  const { dist, base } = useCameraPlacement();
+
+  return (
+    <>
+      {/* A névoa começa depois do tabuleiro e termina bem além dele. Amarrar
+          esses números à distância da câmera é o que faz a cena funcionar
+          igualmente no monitor deitado e no celular em pé. */}
+      <fog attach="fog" args={["#05060a", dist * 0.95, dist * 2.4]} />
+
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[-6, 12, 6]} intensity={1.5} color="#8ff0ff" />
+      <directionalLight position={[7, 9, -5]} intensity={1.1} color="#ff8ae0" />
+
+      <Rig game={game} reduced={reduced} base={base} />
+      <Board />
+      <Body game={game} />
+      <Head game={game} />
+      <Food game={game} />
+      <EatBurst game={game} />
+    </>
+  );
+}
+
 export default function SnakeScene({ game }: { game: Game }) {
   const visible = usePageVisible();
   const reduced = useReducedMotion() ?? false;
@@ -358,22 +412,13 @@ export default function SnakeScene({ game }: { game: Game }) {
       gl={{ antialias: false, powerPreference: "high-performance" }}
     >
       <color attach="background" args={["#05060a"]} />
-      <fog attach="fog" args={["#05060a", 22, 44]} />
+      <Scene game={game} reduced={reduced} />
 
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[-6, 12, 6]} intensity={1.5} color="#8ff0ff" />
-      <directionalLight position={[7, 9, -5]} intensity={1.1} color="#ff8ae0" />
-
-      <Rig game={game} reduced={reduced} />
-      <Board />
-      <Body game={game} />
-      <Head game={game} />
-      <Food game={game} />
-      <EatBurst game={game} />
-
-      {/* multisampling={0}: com MSAA ligado, várias GPUs devolvem tela preta. */}
+      {/* multisampling={0}: com MSAA ligado, várias GPUs devolvem tela preta.
+          UnsignedByteType: muitas GPUs de celular não escrevem em buffers de
+          ponto flutuante, que é o padrão aqui — e falham em silêncio. */}
       {!reduced && (
-        <EffectComposer multisampling={0}>
+        <EffectComposer multisampling={0} frameBufferType={THREE.UnsignedByteType}>
           <Bloom intensity={1.1} luminanceThreshold={0.2} mipmapBlur radius={0.65} />
         </EffectComposer>
       )}
