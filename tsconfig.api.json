@@ -3,8 +3,11 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.api.tsbuildinfo",
     "target": "es2023",
     "lib": ["ES2023"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    // A Vercel compila a pasta api/ com as regras de modulo do Node.
+    // Usar as mesmas aqui faz o erro aparecer na nossa maquina, e nao
+    // so na hora de publicar.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "types": ["node"],
     "skipLibCheck": true,
     "noEmit": true,

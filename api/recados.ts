@@ -8,7 +8,7 @@ import {
   registraEnvio,
   type ComEspera,
   ConflitoDemais,
-} from "./_armazem";
+} from "./_armazem.js";
 
 const ARQUIVO = "recados.json";
 
