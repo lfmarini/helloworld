@@ -7,6 +7,7 @@ import DPad from "../components/DPad";
 import PainelRanking from "../components/PainelRanking";
 import { useSnakeGame } from "../lib/useSnakeGame";
 import { useSwipe } from "../lib/useSwipe";
+import { useToque } from "../lib/useToque";
 import type { Dir } from "../lib/snake";
 
 // A cena 3D é um pedaço grande de código (three.js). Carregando sob demanda,
@@ -30,6 +31,7 @@ export default function Snake() {
   const boardRef = useRef<HTMLDivElement>(null);
   const { status, score, best, start, togglePause, turnTo } = game;
   const [verRanking, setVerRanking] = useState(false);
+  const toque = useToque();
 
   // Comecar uma partida sempre fecha o painel do ranking, senao ele
   // continuaria por cima do jogo ja rodando.
@@ -85,15 +87,20 @@ export default function Snake() {
 
       <div className="flex-1" />
 
-      {/* ---------- Controles na tela (só em telas pequenas) ---------- */}
-      <div className="relative z-10 flex justify-center p-4 sm:hidden">
-        <DPad onPress={handleDPad} />
-      </div>
+      {/* ---------- Controles na tela ----------
+          Quem manda aqui e ter toque, nao a largura: um celular deitado passa
+          de 800px e, por largura, ficaria sem controle nenhum. */}
+      {toque && (
+        <div className="relative z-10 flex justify-center p-4">
+          <DPad onPress={handleDPad} />
+        </div>
+      )}
 
-      {/* Dica de teclado, só faz sentido em tela grande */}
-      <p className="relative z-10 hidden pb-5 text-center text-xs text-white/30 sm:block">
-        Setas ou WASD para mover · Espaço para pausar
-      </p>
+      {!toque && (
+        <p className="relative z-10 pb-5 text-center text-xs text-white/30">
+          Setas ou WASD para mover · Espaço para pausar
+        </p>
+      )}
 
       {/* ---------- Camadas sobrepostas ---------- */}
       <AnimatePresence>

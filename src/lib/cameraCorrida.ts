@@ -47,6 +47,9 @@ export function enquadramento(
     // A câmera acompanha a altura da moto só em parte: em saltos grandes o
     // chão continua na tela, o que ajuda a mirar o pouso.
     posicao: [adiante, 11 + y * 0.45, recuo],
-    mira: [adiante, 1.5 + y * 0.35, 0],
+    // A mira baixa empurra a pista para cima na tela. Isso importa no
+    // celular: os botoes de toque ocupam a faixa de baixo, e com a mira alta a
+    // pista ficava justamente atras deles.
+    mira: [adiante, 0.4 + y * 0.35, 0],
   };
 }

@@ -5,6 +5,7 @@ import BackLink from "../components/BackLink";
 import Loader from "../components/Loader";
 import { COMPRIMENTO, formataTempo } from "../lib/motocross";
 import { useCorrida } from "../lib/useCorrida";
+import { useTelaAcesa, useToque } from "../lib/useToque";
 
 const CorridaScene = lazy(() => import("../components/three/CorridaScene"));
 
@@ -13,6 +14,11 @@ export default function Corrida() {
   const { comandosRef, status, painel, recorde, comecar, alternarPausa } = corrida;
   const [retrato, setRetrato] = useState(false);
   const teclas = useRef(new Set<string>());
+  const toque = useToque();
+
+  // Sem isto o celular apaga a tela no meio da corrida: o dedo fica parado
+  // em cima dos botoes e o sistema entende que ninguem esta usando.
+  useTelaAcesa(status === "correndo");
 
   /* ---------- Orientação ---------- */
   useEffect(() => {
@@ -103,14 +109,26 @@ export default function Corrida() {
 
   return (
     <PageShell className="relative h-dvh overflow-hidden bg-void select-none">
-      <div className="absolute inset-0">
+      {/* touch-none impede o navegador de rolar a pagina, dar zoom ou puxar
+          para recarregar enquanto os dedos estao nos controles. */}
+      <div
+        className="absolute inset-0 touch-none"
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <Suspense fallback={<Loader />}>
           <CorridaScene corrida={corrida} />
         </Suspense>
       </div>
 
       {/* ---------- Painel superior ---------- */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
+      <header
+        className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4"
+        style={{
+          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+          paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+        }}
+      >
         <div className="pointer-events-auto flex items-center gap-2">
           <BackLink />
           <div className="glass rounded-xl px-3 py-2">
@@ -162,13 +180,27 @@ export default function Corrida() {
       </div>
 
       {/* ---------- Controles de toque ---------- */}
-      {emCorrida && (
+      {emCorrida && toque && (
         <>
-          <div className="absolute bottom-4 left-4 flex flex-col gap-2 sm:hidden">
+          <div
+            className="absolute bottom-0 left-0 flex flex-col gap-3 p-4"
+            style={{
+              // Em paisagem o recorte da tela fica na lateral: sem respeitar a
+              // area segura, um botao pode cair embaixo do notch.
+              paddingLeft: "max(1rem, env(safe-area-inset-left))",
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+            }}
+          >
             <BotaoDirecao comandos={comandosRef} valor={-1} rotulo="↑" />
             <BotaoDirecao comandos={comandosRef} valor={1} rotulo="↓" />
           </div>
-          <div className="absolute right-4 bottom-4 flex items-end gap-2 sm:hidden">
+          <div
+            className="absolute right-0 bottom-0 flex items-end gap-3 p-4"
+            style={{
+              paddingRight: "max(1rem, env(safe-area-inset-right))",
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+            }}
+          >
             <BotaoPressao
               rotulo="TURBO"
               cor="magenta"
@@ -183,9 +215,9 @@ export default function Corrida() {
         </>
       )}
 
-      {/* Dica de teclado, só em tela grande */}
-      {emCorrida && (
-        <p className="pointer-events-none absolute inset-x-0 bottom-3 hidden text-center text-xs text-white/25 sm:block">
+      {/* Dica de teclado, só faz sentido para quem tem teclado */}
+      {emCorrida && !toque && (
+        <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-white/25">
           Espaço acelera · Shift dá turbo · ↑ ↓ trocam de faixa e inclinam no ar
           · P pausa
         </p>
@@ -218,9 +250,19 @@ export default function Corrida() {
               de pousar, senão capota.
             </p>
             <Botao onClick={comecar}>Largada</Botao>
-            <p className="mt-3 text-xs text-white/30">
-              Espaço acelera · Shift dá turbo · ↑ ↓ mudam de faixa
-            </p>
+            {toque ? (
+              <>
+                <BotaoSecundario onClick={telaCheia}>Tela cheia</BotaoSecundario>
+                <p className="mt-3 text-xs text-white/30">
+                  Botões à direita aceleram · setas à esquerda mudam de faixa e
+                  inclinam no ar
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-xs text-white/30">
+                Espaço acelera · Shift dá turbo · ↑ ↓ mudam de faixa
+              </p>
+            )}
           </Sobreposicao>
         )}
 
@@ -319,7 +361,7 @@ function BotaoPressao({
       onPointerUp={desligar}
       onPointerCancel={desligar}
       onLostPointerCapture={desligar}
-      className={`glass h-16 rounded-2xl px-5 font-display text-sm font-bold tracking-wider transition-colors ${
+      className={`glass h-20 rounded-2xl px-6 font-display text-sm font-bold tracking-wider transition-colors ${
         cor === "cyan"
           ? ativo
             ? "bg-neon-cyan/35 text-white"
@@ -360,7 +402,7 @@ function BotaoDirecao({
       onPointerCancel={desligar}
       onLostPointerCapture={desligar}
       aria-label={valor < 0 ? "Subir" : "Descer"}
-      className="glass h-14 w-14 rounded-2xl text-xl text-white/70 active:bg-neon-cyan/25 active:text-white"
+      className="glass h-16 w-16 rounded-2xl text-2xl text-white/70 active:bg-neon-cyan/25 active:text-white"
     >
       {rotulo}
     </button>
@@ -400,6 +442,23 @@ function Botao({
     <button
       onClick={onClick}
       className="mt-5 w-full rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-6 py-3 font-display font-semibold text-void transition-transform hover:scale-[1.03] active:scale-95"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BotaoSecundario({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-3 w-full rounded-xl bg-white/5 px-6 py-3 font-display font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
     >
       {children}
     </button>
