@@ -1,20 +1,23 @@
 import { useMemo, useRef } from "react";
-import { Canvas, useFrame, type ThreeElements } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 import { DPR, usePageVisible } from "../../lib/usePageVisible";
+import { usePointer } from "../../lib/usePointer";
+
+type Pointer = ReturnType<typeof usePointer>;
 
 /** Nuvem de pontos que flutua devagar e se inclina seguindo o mouse. */
-function Starfield({ count = 1400 }: { count?: number }) {
+function Starfield({ count, pointer }: { count: number; pointer: Pointer }) {
   const ref = useRef<THREE.Points>(null);
 
   // useMemo: as posicoes sao geradas uma unica vez, nao a cada quadro.
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      // Distribuicao numa casca esferica, pra nuvem ficar em volta da camera.
-      const r = 6 + Math.random() * 12;
+      // Distribuicao numa casca esferica, pra nuvem envolver a camera.
+      const r = 7 + Math.random() * 13;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
@@ -24,13 +27,12 @@ function Starfield({ count = 1400 }: { count?: number }) {
     return arr;
   }, [count]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!ref.current) return;
-    ref.current.rotation.y += delta * 0.02;
-    // state.pointer vai de -1 a 1 nos dois eixos: e o mouse normalizado.
+    ref.current.rotation.y += delta * 0.015;
     ref.current.rotation.x = THREE.MathUtils.lerp(
       ref.current.rotation.x,
-      state.pointer.y * 0.25,
+      pointer.current.y * 0.18,
       0.03,
     );
   });
@@ -38,16 +40,13 @@ function Starfield({ count = 1400 }: { count?: number }) {
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.045}
-        color="#7fe9f5"
+        size={0.05}
+        color="#8fe6f2"
         transparent
-        opacity={0.75}
+        opacity={0.6}
         sizeAttenuation
         depthWrite={false}
       />
@@ -55,40 +54,53 @@ function Starfield({ count = 1400 }: { count?: number }) {
   );
 }
 
-/** Nucleo de arame no centro: gira sozinho e reage ao mouse. */
-function Core(props: ThreeElements["group"]) {
+/**
+ * Nucleo de arame. Fica deslocado pra direita e pro fundo de proposito, pra
+ * servir de moldura da composicao em vez de passar por cima do titulo.
+ */
+function Core({ pointer }: { pointer: Pointer }) {
   const group = useRef<THREE.Group>(null);
+  const outer = useRef<THREE.Mesh>(null);
   const inner = useRef<THREE.Mesh>(null);
 
-  useFrame((state, delta) => {
+  // Em tela deitada (desktop) o núcleo fica à direita, servindo de moldura
+  // pro texto. Em tela em pé (celular) não cabe na lateral, então ele vai pro
+  // centro, atrás do conteúdo, e diminui um pouco.
+  const portrait = useThree((state) => state.size.height > state.size.width);
+  const position: [number, number, number] = portrait
+    ? [0, 1.6, -3.5]
+    : [3.5, 1.2, -2.5];
+
+  useFrame((_, delta) => {
     if (!group.current) return;
-    // lerp = interpolacao suave. Em vez de "colar" o objeto no mouse, ele
-    // persegue a posicao alvo, o que da a sensacao de peso/inercia.
+    // lerp = interpolacao suave. Em vez de "colar" o objeto na posicao do
+    // mouse, ele persegue o alvo — o que da sensacao de peso e inercia.
     group.current.rotation.y = THREE.MathUtils.lerp(
       group.current.rotation.y,
-      state.pointer.x * 0.6,
-      0.04,
+      pointer.current.x * 0.5,
+      0.045,
     );
     group.current.rotation.x = THREE.MathUtils.lerp(
       group.current.rotation.x,
-      -state.pointer.y * 0.4,
-      0.04,
+      -pointer.current.y * 0.35,
+      0.045,
     );
+    if (outer.current) outer.current.rotation.y += delta * 0.06;
     if (inner.current) {
-      inner.current.rotation.x += delta * 0.18;
-      inner.current.rotation.z -= delta * 0.12;
+      inner.current.rotation.x += delta * 0.16;
+      inner.current.rotation.z -= delta * 0.1;
     }
   });
 
   return (
-    <group ref={group} {...props}>
-      <mesh ref={inner}>
-        <icosahedronGeometry args={[2.1, 1]} />
-        <meshBasicMaterial color="#22e0f0" wireframe transparent opacity={0.55} />
+    <group ref={group} position={position}>
+      <mesh ref={outer}>
+        <icosahedronGeometry args={[2.4, 1]} />
+        <meshBasicMaterial color="#22e0f0" wireframe transparent opacity={0.32} />
       </mesh>
-      <mesh scale={0.62}>
-        <icosahedronGeometry args={[2.1, 0]} />
-        <meshBasicMaterial color="#f03ec8" wireframe transparent opacity={0.4} />
+      <mesh ref={inner} scale={0.55}>
+        <icosahedronGeometry args={[2.4, 0]} />
+        <meshBasicMaterial color="#f03ec8" wireframe transparent opacity={0.5} />
       </mesh>
     </group>
   );
@@ -97,6 +109,7 @@ function Core(props: ThreeElements["group"]) {
 export default function HomeScene() {
   const visible = usePageVisible();
   const reduced = useReducedMotion();
+  const pointer = usePointer();
 
   return (
     <Canvas
@@ -107,13 +120,15 @@ export default function HomeScene() {
       gl={{ antialias: false, powerPreference: "high-performance" }}
     >
       <color attach="background" args={["#05060a"]} />
-      <Starfield count={reduced ? 500 : 1400} />
-      <Core />
-      {/* Bloom e o que da o brilho neon: pixels claros "vazam" luz pra fora.
-          Com movimento reduzido, cortamos o pos-processamento inteiro. */}
+      <Starfield count={reduced ? 450 : 1300} pointer={pointer} />
+      <Core pointer={pointer} />
+      {/* Bloom e o que da o brilho neon: os pixels claros "vazam" luz pra fora.
+          multisampling={0} e obrigatorio aqui — com o anti-aliasing por
+          multiamostragem ligado, varias GPUs devolvem a tela inteira preta.
+          Com "movimento reduzido" ligado no sistema, cortamos o efeito todo. */}
       {!reduced && (
-        <EffectComposer>
-          <Bloom intensity={1.5} luminanceThreshold={0.15} mipmapBlur radius={0.75} />
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={1.35} luminanceThreshold={0.12} mipmapBlur radius={0.7} />
         </EffectComposer>
       )}
     </Canvas>

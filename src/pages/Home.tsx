@@ -12,7 +12,7 @@ const cards = [
     to: "/snake",
     emoji: "🐍",
     title: "Cobrinha 3D",
-    desc: "O classico, agora em tres dimensoes, com brilho neon e particulas.",
+    desc: "O clássico, agora em três dimensões, com brilho neon e partículas.",
     accent: "from-neon-cyan/25",
     ring: "group-hover:border-neon-cyan/50",
   },
@@ -20,7 +20,7 @@ const cards = [
     to: "/afinador",
     emoji: "🎸",
     title: "Afinador",
-    desc: "Afine seu violao pelo microfone, com precisao em cents.",
+    desc: "Afine seu violão pelo microfone, com precisão em cents.",
     accent: "from-neon-magenta/25",
     ring: "group-hover:border-neon-magenta/50",
   },
@@ -35,8 +35,10 @@ export default function Home() {
           <HomeScene />
         </Suspense>
       </div>
-      {/* Vinheta escura pra garantir contraste do texto sobre a cena */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-radial-[at_50%_45%] from-transparent to-void/90" />
+      {/* Duas vinhetas escuras garantem que o texto sempre tenha contraste,
+          por mais que a cena 3D esteja brilhando atras dele. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-void via-void/75 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-radial-[at_60%_50%] from-transparent to-void/70" />
 
       <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 py-16 sm:px-8">
         <motion.p
@@ -66,7 +68,7 @@ export default function Home() {
           transition={{ delay: 0.26 }}
           className="mt-5 max-w-md text-base text-white/60 sm:text-lg"
         >
-          Duas ferramentas em uma so pagina. Instalavel no celular e funciona
+          Duas ferramentas em uma só página. Instalável no celular e funciona
           sem internet.
         </motion.p>
 
